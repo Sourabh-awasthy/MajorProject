@@ -9,3 +9,6 @@ You can verify this by running:
 ```bash
 python3 --version
 
+## How to Run
+```bash
+python3 major.py
