@@ -1,16 +1,16 @@
 # Smart Soil Analyzer for Raspberry Pi 4
 # This script reads soil data, allows crop selection via a knob,
-# and provides fertilizer recommendations on an OLED display.
+# and provides fertilizer recommendations on an OLED display and via voice in Hindi.
 
 import time
 import random
+import os
+from gtts import gTTS
 
 # --- Hardware Abstraction Layer ---
 # This section contains mock functions and classes to simulate hardware.
 # On your Raspberry Pi, you would replace the code in this section
 # with the actual libraries for your specific hardware components.
-# For example, for an SSD1306 OLED, you'd use the 'adafruit_ssd1306' library.
-# For GPIO, you'd use 'RPi.GPIO' or 'gpiozero'.
 
 class MockOLED:
     """A mock class to simulate an OLED display. It prints to the console."""
@@ -21,7 +21,6 @@ class MockOLED:
 
     def fill(self, color):
         """Simulates clearing the display."""
-        # In a real scenario, this would clear the display buffer.
         pass
 
     def text(self, text, x, y, color):
@@ -31,34 +30,45 @@ class MockOLED:
     def show(self):
         """Simulates updating the display with the buffer content."""
         print("------------------------------------")
-        # On real hardware, this pushes the buffer to the screen.
-        time.sleep(1) # Simulate the time it takes to update the screen
+        time.sleep(1)
 
 def read_soil_sensor():
-    """
-    MOCK FUNCTION: Simulates reading data from a soil sensor.
-    Replace this with your sensor's actual reading function.
-    This should return a dictionary with nutrient values.
-    """
-    # These values would come from your I2C/SPI/Analog sensor
+    """MOCK FUNCTION: Simulates reading data from a soil sensor."""
     sensor_data = {
-        'nitrogen': round(random.uniform(5, 25), 1),  # in mg/kg
-        'phosphorus': round(random.uniform(10, 40), 1), # in mg/kg
-        'potassium': round(random.uniform(15, 55), 1)  # in mg/kg
+        'nitrogen': round(random.uniform(5, 25), 1),
+        'phosphorus': round(random.uniform(10, 40), 1),
+        'potassium': round(random.uniform(15, 55), 1)
     }
     print(f"[SENSOR READ]: {sensor_data}")
     return sensor_data
 
+# --- New Function for Voice Output ---
+def speak_hindi(text_to_speak):
+    """
+    Converts text to speech in Hindi and plays the audio.
+    Requires an internet connection to work.
+    """
+    try:
+        print(f"[VOICE OUTPUT] Speaking: '{text_to_speak}'")
+        # Create gTTS object
+        tts = gTTS(text=text_to_speak, lang='hi')
+        # Save the audio file
+        audio_file = "recommendation.mp3"
+        tts.save(audio_file)
+        # Play the audio file using mpg123
+        os.system(f"mpg123 -q {audio_file}")
+    except Exception as e:
+        print(f"An error occurred during text-to-speech: {e}")
+        print("Please ensure you are connected to the internet and have mpg123 installed.")
+
 # --- Configuration and Data ---
 
-# Pre-fed data for different crops.
-# In a real-world application, this could be loaded from a file (e.g., JSON or CSV).
 CROP_DATA = {
-    'Rice': {
+    'Tomato': {
         'nitrogen': 22.0, 'phosphorus': 35.0, 'potassium': 45.0,
         'recommendation_fertilizer': 'NPK 10-20-20'
     },
-    'Wheat': {
+    'Lettuce': {
         'nitrogen': 18.0, 'phosphorus': 25.0, 'potassium': 30.0,
         'recommendation_fertilizer': 'Balanced NPK 15-15-15'
     },
@@ -72,20 +82,13 @@ CROP_DATA = {
     }
 }
 
-# Conversion factor to translate nutrient deficiency (in mg/kg) to
-# fertilizer quantity (in gm/sq. m). This is a simplified value.
-# (Deficiency * FACTOR) = gm/sq. m. You may need to adjust this.
 NUTRIENT_TO_FERTILIZER_FACTOR = 0.5
 
 # --- Main Application Logic ---
 
 class SoilAnalyzerApp:
     def __init__(self):
-        # Initialize hardware
-        # For a 128x64 OLED display
         self.oled = MockOLED(128, 64)
-
-        # Application state
         self.crops = list(CROP_DATA.keys())
         self.current_crop_index = 0
         self.running = True
@@ -102,27 +105,17 @@ class SoilAnalyzerApp:
         self.oled.show()
 
     def get_user_input(self):
-        """
-        MOCK FUNCTION: Simulates user input from the knob and button.
-        In your actual code, this would check GPIO pins.
-        """
-        # We use command-line input to simulate hardware interaction
+        """MOCK FUNCTION: Simulates user input from the knob and button."""
         print("\n--- WAITING FOR INPUT ---")
         print("Enter 'k+' (knob clockwise), 'k-' (knob counter-clockwise),")
         print("or 'b' (compute button press), 'q' (quit):")
         choice = input("> ").lower()
         self.last_knob_input = ''
         self.last_button_input = ''
-
-        if choice == 'k+':
-            self.last_knob_input = 'clockwise'
-        elif choice == 'k-':
-            self.last_knob_input = 'counter-clockwise'
-        elif choice == 'b':
-            self.last_button_input = 'pressed'
-        elif choice == 'q':
-            self.running = False
-
+        if choice == 'k+': self.last_knob_input = 'clockwise'
+        elif choice == 'k-': self.last_knob_input = 'counter-clockwise'
+        elif choice == 'b': self.last_button_input = 'pressed'
+        elif choice == 'q': self.running = False
 
     def compute_recommendation(self):
         """The core logic that is triggered by the button press."""
@@ -131,57 +124,62 @@ class SoilAnalyzerApp:
         fertilizer_type = ideal_levels['recommendation_fertilizer']
 
         self.update_display("Analyzing...", "Reading sensors...")
+        speak_hindi("Anumaan lagaya ja raha hai. Kripya pratiksha karein.")
         current_levels = read_soil_sensor()
 
-        # Calculate deficiencies
         n_diff = ideal_levels['nitrogen'] - current_levels['nitrogen']
         p_diff = ideal_levels['phosphorus'] - current_levels['phosphorus']
         k_diff = ideal_levels['potassium'] - current_levels['potassium']
 
-        # Find the most deficient nutrient to make a single recommendation
         deficiencies = {'Nitrogen': n_diff, 'Phosphorus': p_diff, 'Potassium': k_diff}
         most_deficient_nutrient = max(deficiencies, key=deficiencies.get)
         max_deficiency = deficiencies[most_deficient_nutrient]
 
-        if max_deficiency > 2.0: # Only recommend if deficiency is significant
-            amount_to_add = round(max_deficiency * NUTRIENT_TO_FERTILIZER_FACTOR, 1)
-            line1 = "Recommendation:"
-            line2 = f"Add {amount_to_add} gm/sq.m"
-            line3 = f"of {fertilizer_type}"
-            line4 = f"for {most_deficient_nutrient}"
-        else:
-            line1 = "Soil is healthy!"
-            line2 = "No fertilizer"
-            line3 = "needed for"
-            line4 = selected_crop_name
+        display_text = []
+        speech_text = ""
 
-        self.update_display(line1, line2, line3, line4)
-        time.sleep(5) # Show the message for 5 seconds before returning to crop selection
+        if max_deficiency > 2.0:
+            amount_to_add = round(max_deficiency * NUTRIENT_TO_FERTILIZER_FACTOR, 1)
+            display_text = [
+                "Recommendation:",
+                f"Add {amount_to_add} gm/sq.m",
+                f"of {fertilizer_type}",
+                f"for {most_deficient_nutrient}"
+            ]
+            speech_text = f"{most_deficient_nutrient} ke liye, {amount_to_add} gram prati varg meter {fertilizer_type} khaad daalein."
+        else:
+            display_text = [
+                "Soil is healthy!",
+                "No fertilizer",
+                "needed for",
+                selected_crop_name
+            ]
+            speech_text = f"{selected_crop_name} ke liye mitti swasth hai. Khaad ki avashyakta nahi hai."
+
+        self.update_display(*display_text)
+        speak_hindi(speech_text)
+
+        time.sleep(3) # Wait before returning to the main screen
 
     def run(self):
         """The main loop of the application."""
         print("Starting Smart Soil Analyzer...")
-        # Initial display
-        self.update_display("Select Crop:", self.crops[self.current_crop_index], "Press 'b' to compute")
-
+        speak_hindi("Smart Soil Analyzer shuru ho gaya hai.")
+        
         while self.running:
+            self.update_display("Select Crop:", self.crops[self.current_crop_index], "Press 'b' to compute")
             self.get_user_input()
 
-            # Handle knob input
             if self.last_knob_input == 'clockwise':
                 self.current_crop_index = (self.current_crop_index + 1) % len(self.crops)
             elif self.last_knob_input == 'counter-clockwise':
                 self.current_crop_index = (self.current_crop_index - 1 + len(self.crops)) % len(self.crops)
 
-            # Handle button press
             if self.last_button_input == 'pressed':
                 self.compute_recommendation()
-
-            # Update display after any action
-            self.update_display("Select Crop:", self.crops[self.current_crop_index], "Press 'b' to compute")
-
+        
+        speak_hindi("Application band ho raha hai.")
         print("Shutting down.")
-
 
 if __name__ == "__main__":
     app = SoilAnalyzerApp()
