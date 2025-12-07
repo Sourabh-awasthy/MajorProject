@@ -10,7 +10,7 @@ from gtts import gTTS
 SERIAL_PORT = '/dev/ttyUSB0'
 BAUD_RATE = 9600
 
-# We use a LIST [ ] so the Rotary Encoder can scroll through them easily.
+# --- CROP DATABASE ---
 CROPS = [
     {
         'name': 'Tomato', 
@@ -44,7 +44,7 @@ CROPS = [
         'name': 'Wheat', 
         'hi_name': 'गेहूँ', 
         'n': 50, 'p': 30, 'k': 20, 
-        'limit': 400, 
+        'limit': 350,  # Lowered limit so 400 triggers water
         'fert_name': 'Urea'
     }
 ]
@@ -86,9 +86,9 @@ def speak(text, lang='hi'):
 
 def get_real_moisture():
     global ser
-    # Debug prints removed for cleaner console, but logic remains Blocking
     if not ser:
-        return random.randint(200, 600)
+        # Generate HIGH moisture (Dry soil) for testing so it asks for water
+        return random.randint(400, 600) 
     
     try:
         ser.reset_input_buffer()
@@ -105,10 +105,13 @@ def get_real_moisture():
         return 400
 
 def get_mock_npk():
+    # --- FIX IS HERE ---
+    # We generate LOW numbers (5 to 15).
+    # Since crops need 20+, this forces the system to say "Add Fertilizer".
     return {
-        'n': random.randint(10, 60),
-        'p': random.randint(10, 60),
-        'k': random.randint(10, 60)
+        'n': random.randint(5, 15), 
+        'p': random.randint(5, 15),
+        'k': random.randint(5, 15)
     }
 
 def show_menu(idx):
@@ -121,7 +124,7 @@ def show_menu(idx):
 def analyze_and_report(crop_idx):
     selected_crop = CROPS[crop_idx]
     hindi_crop = selected_crop['hi_name']
-    rec_fertilizer = selected_crop['fert_name'] # Get the specific fertilizer name
+    rec_fertilizer = selected_crop['fert_name'] 
     
     lcd.clear()
     lcd.write_string("Analyzing...")
@@ -132,15 +135,17 @@ def analyze_and_report(crop_idx):
     # 2. Get Data
     moisture = get_real_moisture()
     soil_npk = get_mock_npk()
-    print(f"Debug -> Crop: {selected_crop['name']} | Moist: {moisture}")
+    print(f"Debug -> Crop: {selected_crop['name']} | Moist: {moisture} | Soil N: {soil_npk['n']}")
 
     # 3. Calculations
     water_needed = 0
+    # Assuming Sensor: High Value = Dry Soil
     if moisture > selected_crop['limit']:
         diff = moisture - selected_crop['limit']
         water_needed = round(diff * 0.05, 1)
 
     manure_needed = 0
+    # Logic: If Soil < Required, then add manure
     if soil_npk['n'] < selected_crop['n']:
         n_diff = selected_crop['n'] - soil_npk['n']
         manure_needed = round(n_diff * 0.05, 1)
@@ -157,7 +162,7 @@ def analyze_and_report(crop_idx):
         else:
             voice_msg += "Paani paryapt maatra mein hai. "
         
-        # Fertilizer Result (Using specific name now)
+        # Fertilizer Result
         if manure_needed > 0:
             voice_msg += f"{manure_needed} gram prati varg meter {rec_fertilizer} khaad daalein."
         else:
@@ -167,7 +172,7 @@ def analyze_and_report(crop_idx):
     lcd.clear()
     lcd.write_string(f"Water: {water_needed}L")
     lcd.crlf()
-    lcd.write_string(f"Fert: {manure_needed}g") # Changed to 'g' for grams logic
+    lcd.write_string(f"Fert: {manure_needed}g")
     
     speak(voice_msg)
     
