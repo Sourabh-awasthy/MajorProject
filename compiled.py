@@ -46,26 +46,43 @@ def speak(text):
         tts = gTTS(text=text, lang='hi', slow=False)
         filename = "temp_voice.mp3"
         tts.save(filename)
-        os.system(f"mpg123 {filename}")
+        os.system(f"mpg123 -q {filename}")
     except Exception as e:
         print(f"TTS Error (Check Internet): {e}")
 
 def get_real_moisture():
     global ser
+    print("--- DEBUG: Entering get_real_moisture ---")
+    
     if not ser:
+        print("--- DEBUG: No Serial Connection (Mock Mode) ---")
         return random.randint(300, 600)
     
     try:
         ser.reset_input_buffer()
+        print("--- DEBUG: Waiting for data (I will wait forever)... ---")
         
-        for _ in range(10):
+        # CHANGED: Loop forever until we get data (Blocking Mode)
+        while True:
             if ser.in_waiting > 0:
-                line = ser.readline().decode('utf-8').rstrip()
-                if line.isdigit():
-                    return int(line)
-        return 400
+                try:
+                    line = ser.readline().decode('utf-8').strip()
+                    print(f"--- DEBUG: Received: '{line}' ---")
+                    
+                    if line.isdigit():
+                        val = int(line)
+                        print(f"--- DEBUG: Success! Moisture is {val} ---")
+                        return val
+                    else:
+                        print(f"--- DEBUG: ignored non-digit line: {line} ---")
+                except Exception as e:
+                    print(f"--- DEBUG: Decode error: {e}")
+            
+            # Small sleep to prevent CPU overload
+            time.sleep(0.1)
+            
     except Exception as e:
-        print(f"Read Error: {e}")
+        print(f"--- DEBUG: Critical Read Error: {e} ---")
         return 400
 
 def get_mock_npk():
@@ -84,11 +101,16 @@ def show_menu(idx):
 
 def analyze_and_report(crop_idx):
     selected_crop = CROPS[crop_idx]
+    hindi_crop = selected_crop['hi_name']
     
     lcd.clear()
     lcd.write_string("Analyzing...")
     
+    speak(f"सबसे पहले, {hindi_crop} के लिए अनुमान लगाया जा रहा है।")
+    
+    # This will now wait until it gets a number
     moisture = get_real_moisture()
+    
     soil_npk = get_mock_npk()
     print(f"Debug -> Crop: {selected_crop['name']} | Moist: {moisture}")
 
@@ -102,8 +124,7 @@ def analyze_and_report(crop_idx):
         n_diff = selected_crop['n'] - soil_npk['n']
         manure_needed = round(n_diff * 0.05, 1)
 
-    hindi_crop = selected_crop['hi_name']
-    voice_msg = f"{hindi_crop} के लिए परिणाम। "
+    voice_msg = "परिणाम इस प्रकार हैं। "
     
     if water_needed == 0 and manure_needed == 0:
         voice_msg += "मिट्टी पूरी तरह से स्वस्थ है।"
