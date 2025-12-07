@@ -44,7 +44,7 @@ CROPS = [
         'name': 'Wheat', 
         'hi_name': 'गेहूँ', 
         'n': 50, 'p': 30, 'k': 20, 
-        'limit': 350,  # Lowered limit so 400 triggers water
+        'limit': 350, 
         'fert_name': 'Urea'
     }
 ]
@@ -86,8 +86,8 @@ def speak(text, lang='hi'):
 
 def get_real_moisture():
     global ser
+    # Generating HIGH moisture (Dry Soil) so it asks for water
     if not ser:
-        # Generate HIGH moisture (Dry soil) for testing so it asks for water
         return random.randint(400, 600) 
     
     try:
@@ -105,9 +105,7 @@ def get_real_moisture():
         return 400
 
 def get_mock_npk():
-    # --- FIX IS HERE ---
-    # We generate LOW numbers (5 to 15).
-    # Since crops need 20+, this forces the system to say "Add Fertilizer".
+    # Generating LOW nutrients so it asks for Fertilizer
     return {
         'n': random.randint(5, 15), 
         'p': random.randint(5, 15),
@@ -139,13 +137,11 @@ def analyze_and_report(crop_idx):
 
     # 3. Calculations
     water_needed = 0
-    # Assuming Sensor: High Value = Dry Soil
     if moisture > selected_crop['limit']:
         diff = moisture - selected_crop['limit']
         water_needed = round(diff * 0.05, 1)
 
     manure_needed = 0
-    # Logic: If Soil < Required, then add manure
     if soil_npk['n'] < selected_crop['n']:
         n_diff = selected_crop['n'] - soil_npk['n']
         manure_needed = round(n_diff * 0.05, 1)
@@ -156,9 +152,10 @@ def analyze_and_report(crop_idx):
     if water_needed == 0 and manure_needed == 0:
         voice_msg = "Mitti ki jaanch safal hui. Abhi kuch daalne ki awashyakta nahi hai aur paani bhi paryapt maatra mein hai."
     else:
-        # Water Result
+        # Water Result (UPDATED HERE)
         if water_needed > 0:
-            voice_msg += f"{water_needed} liter paani daalein. "
+            # "X liter prati varg meter paani daalein"
+            voice_msg += f"{water_needed} liter prati varg meter paani daalein. "
         else:
             voice_msg += "Paani paryapt maatra mein hai. "
         
