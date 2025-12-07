@@ -5,19 +5,20 @@ import random
 import serial
 from gpiozero import RotaryEncoder, Button
 from RPLCD.i2c import CharLCD
+from gtts import gTTS  # Added gTTS
 
 # --- CONFIGURATION ---
 SERIAL_PORT = '/dev/ttyUSB0' # Change to /dev/ttyACM0 if needed
 BAUD_RATE = 9600
 
 # Crop Database
-# 'limit': The moisture value above which the soil is considered DRY.
+# Added 'hi_name' for Hindi Voice output
 CROPS = [
-    {'name': 'Wheat',   'n': 50, 'p': 30, 'k': 20, 'limit': 400},
-    {'name': 'Rice',    'n': 60, 'p': 30, 'k': 20, 'limit': 250},
-    {'name': 'Maize',   'n': 80, 'p': 40, 'k': 30, 'limit': 350},
-    {'name': 'Cotton',  'n': 70, 'p': 30, 'k': 40, 'limit': 450},
-    {'name': 'Tomato',  'n': 22, 'p': 35, 'k': 45, 'limit': 300},
+    {'name': 'Wheat',  'hi_name': 'गेहूँ',   'n': 50, 'p': 30, 'k': 20, 'limit': 400},
+    {'name': 'Rice',   'hi_name': 'चावल',   'n': 60, 'p': 30, 'k': 20, 'limit': 250},
+    {'name': 'Maize',  'hi_name': 'मक्का',   'n': 80, 'p': 40, 'k': 30, 'limit': 350},
+    {'name': 'Cotton', 'hi_name': 'कपास',   'n': 70, 'p': 30, 'k': 40, 'limit': 450},
+    {'name': 'Tomato', 'hi_name': 'टमाटर',  'n': 22, 'p': 35, 'k': 45, 'limit': 300},
 ]
 
 # --- HARDWARE SETUP ---
@@ -51,10 +52,22 @@ except Exception as e:
 # --- FUNCTIONS ---
 
 def speak(text):
-    """Text-to-Speech using espeak-ng"""
-    print(f"[Voice]: {text}")
-    # -s 160 is speed
-    os.system(f'espeak-ng -s 160 "{text}" --stdout | aplay -q')
+    """Text-to-Speech using Google TTS (Hindi) and mpg321"""
+    print(f"[Voice Output]: {text}")
+    try:
+        # Generate MP3 using Google API
+        # lang='hi' ensures it speaks in Hindi
+        tts = gTTS(text=text, lang='hi', slow=False)
+        filename = "temp_voice.mp3"
+        tts.save(filename)
+        
+        # Play the file using mpg321
+        os.system(f"mpg321 {filename}")
+        
+        # Optional: remove file after playing to save space
+        # os.remove(filename) 
+    except Exception as e:
+        print(f"TTS Error (Check Internet): {e}")
 
 def get_real_moisture():
     """Reads sensor using your exact logic"""
@@ -93,7 +106,7 @@ def show_menu(idx):
     lcd.write_string(f"> {crop_name}")
 
 def analyze_and_report(crop_idx):
-    """Main Logic: Reads data -> Calculates -> Speaks"""
+    """Main Logic: Reads data -> Calculates -> Speaks (in Hindi)"""
     selected_crop = CROPS[crop_idx]
     
     # User Feedback
@@ -118,26 +131,32 @@ def analyze_and_report(crop_idx):
         n_diff = selected_crop['n'] - soil_npk['n']
         manure_needed = round(n_diff * 0.05, 1)
 
-    # 3. Create Voice Message
-    msg = f"Result for {selected_crop['name']} per square meter. "
+    # 3. Create Voice Message (IN HINDI)
+    # We construct a Hindi string here for gTTS
+    
+    hindi_crop = selected_crop['hi_name']
+    voice_msg = f"{hindi_crop} के लिए परिणाम। "
     
     if water_needed == 0 and manure_needed == 0:
-        msg += "Soil is healthy."
+        voice_msg += "मिट्टी पूरी तरह से स्वस्थ है।"
     else:
         if water_needed > 0:
-            msg += f"Add {water_needed} liters of water. "
+            # Translating: "Add X liters water" -> "X liter paani daalein"
+            voice_msg += f"{water_needed} लीटर पानी डालें। "
         if manure_needed > 0:
-            msg += f"Add {manure_needed} kilos of manure."
+            # Translating: "Add Y kg manure" -> "Y kilo khaad daalein"
+            voice_msg += f"{manure_needed} किलो खाद डालें।"
 
     # 4. Display & Speak
     
-    # Show Water
+    # Show Water on LCD (In English for display compatibility)
     lcd.clear()
     lcd.write_string(f"Water: {water_needed}L")
     lcd.crlf()
     lcd.write_string(f"Manure: {manure_needed}Kg")
     
-    speak(msg)
+    # Speak the Hindi message
+    speak(voice_msg)
     
     # Pause so user can read before menu returns
     time.sleep(2)
