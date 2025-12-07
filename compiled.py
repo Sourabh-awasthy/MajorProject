@@ -18,11 +18,48 @@ PIN_AI_BUTTON = 5     # The separate button for Deep Learning Model
 
 # --- CROP DATABASE ---
 CROPS = [
-    {'name': 'Tomato', 'hi_name': 'टमाटर', 'n': 22, 'p': 35, 'k': 45, 'limit': 300, 'fert_name': 'NPK 10-20-20'},
-    {'name': 'Lettuce', 'hi_name': 'सलाद पत्ता', 'n': 18, 'p': 25, 'k': 30, 'limit': 250, 'fert_name': 'NPK 15-15-15'},
-    {'name': 'Carrot', 'hi_name': 'गाजर', 'n': 15, 'p': 30, 'k': 40, 'limit': 350, 'fert_name': 'NPK 5-15-15'},
-    {'name': 'Potato', 'hi_name': 'आलू', 'n': 25, 'p': 45, 'k': 50, 'limit': 400, 'fert_name': 'NPK 8-24-24'},
-    {'name': 'Wheat', 'hi_name': 'गेहूँ', 'n': 50, 'p': 30, 'k': 20, 'limit': 350, 'fert_name': 'Urea'}
+    {
+        'name': 'Rice', 
+        'hi_name': 'चावल', 
+        'n': 60, 'p': 30, 'k': 20, 
+        'limit': 250, # Very wet soil required
+        'fert_name': 'DAP'
+    },
+    {
+        'name': 'Tomato', 
+        'hi_name': 'टमाटर', 
+        'n': 22, 'p': 35, 'k': 45, 
+        'limit': 300, 
+        'fert_name': 'NPK 10-20-20'
+    },
+    {
+        'name': 'Lettuce', 
+        'hi_name': 'सलाद पत्ता', 
+        'n': 18, 'p': 25, 'k': 30, 
+        'limit': 250, 
+        'fert_name': 'NPK 15-15-15'
+    },
+    {
+        'name': 'Carrot', 
+        'hi_name': 'गाजर', 
+        'n': 15, 'p': 30, 'k': 40, 
+        'limit': 350, 
+        'fert_name': 'NPK 5-15-15'
+    },
+    {
+        'name': 'Potato', 
+        'hi_name': 'आलू', 
+        'n': 25, 'p': 45, 'k': 50, 
+        'limit': 400, 
+        'fert_name': 'NPK 8-24-24'
+    },
+    {
+        'name': 'Wheat', 
+        'hi_name': 'गेहूँ', 
+        'n': 50, 'p': 30, 'k': 20, 
+        'limit': 350, 
+        'fert_name': 'Urea'
+    }
 ]
 
 # --- SETUP HARDWARE ---
